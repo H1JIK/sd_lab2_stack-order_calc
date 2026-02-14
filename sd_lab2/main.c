@@ -8,7 +8,6 @@ enum token_type {
     NUMB, OPERATOR, FUNC, PEREM, LSKOB, RSKOB
 };
 
-
 //DOUBLE
 typedef struct node_dbl {
     double data;
@@ -155,6 +154,33 @@ void tokenize(queue* q, char* str) {
         enqueue(q, new_tok);
     }
 
+}
+
+int priority(token* tok) {
+    int pri;
+    if (tok->type == FUNC)pri = 4;
+    else {
+        switch (tok->data[0]) {
+        case '+':
+        case '-':
+            pri = 0;
+            break;
+        case '*':
+        case '/':
+            pri = 1;
+            break;
+        case '^':
+            pri = 2;
+            break;
+        case '!':
+            pri = 3;
+            break;
+        default:
+            pri = -1;
+            break;
+        }
+    }
+    return pri;
 }
 
 void sort_station() {
