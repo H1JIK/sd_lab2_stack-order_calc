@@ -157,9 +157,28 @@ void tokenize(queue* q, char* str) {
 
 }
 
+void sort_station() {
+
+}
+
 void main() {
-    queue q1;
-    tokenize(&q1, "123+sin(23)");
+    char user_input[512];
+    printf("Input the math expression: ");
+    scanf("%s", user_input);
+
+    token cur_tok;
+    queue q_in, q_out;
+    init_queue(&q_in); init_queue(&q_out);
+
+    stack_dbl numbs; stack_str ops;
+    init_stack_dbl(&numbs); init_stack_dbl(&ops);
+
+    tokenize(&q_in, user_input);
+    while (!queue_is_empty) {
+        token* cur_tok = dequeue(&q_in);
+        if (cur_tok->type == NUMB || cur_tok->type == PEREM) enqueue(&q_out, cur_tok);
+        /*else if (cur_tok->type == OPERATOR) push_str(&ops, cur_tok->data);*/
+    }
 }
 
 
