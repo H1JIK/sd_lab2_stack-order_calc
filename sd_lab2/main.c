@@ -2,65 +2,164 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+#include <ctype.h>
 
-typedef struct stack_numb {
-	double val;
-	stack_numb* next;
-} stack_numb;
+enum token_type {
+    NUMB, OPERATOR, FUNC, PEREM, LSKOB, RSKOB
+};
+
+
+//DOUBLE
+typedef struct node_dbl {
+    double data;
+    struct node_dbl* next;
+} node_dbl;
+
+typedef struct stack_dbl {
+    struct node_dbl* top;
+}stack_dbl;
+
+//STR
+typedef struct node_str {
+    char* data;
+    struct node_str* next;
+} node_str;
 
 typedef struct stack_str {
-	char* val;
-	stack_str* next;
+    struct node_str* top;
 }stack_str;
 
-stack_numb* push_n(stack_numb *top, double val) {
-	stack_numb* next_stack = (stack_numb*)malloc(sizeof(stack_numb));
-	next_stack->val = val;
-	next_stack->next = top;
-	return next_stack;
+//oper i td
+
+typedef struct token {
+    char* data;
+    int type;
+    struct token* next;
+}token;
+
+typedef struct {
+    token* head;
+    token* tail;
+} queue;
+
+
+void init_stack_dbl(stack_dbl* st) {
+    st->top = NULL;
 }
 
-stack_str* push_s(stack_str* top, char* val) {
-	stack_str* next_stack = (stack_str*)malloc(sizeof(stack_str));
-	next_stack->val = (char*)malloc(strlen(val) + 1);
-	strcpy(next_stack->val, val);
-	next_stack->next = top;
-	return next_stack;
+void init_stack_str(stack_str* st) {
+    st->top = NULL;
 }
 
-double pop_n(stack_numb** top) {
-	if (*top == NULL) {
-		exit(0);//какая-то ошибка
-	}
-	stack_numb *tmp = *top;
-	double val = (*top)->val;
-	*top = (*top)->next;
-	free(tmp);
-	return val;
+void init_queue(queue* q) {
+    q->head = NULL;
+    q->tail = NULL;
 }
 
-char* pop_s(stack_str** top) {
-	if (*top == NULL) exit(0);
-	char* val = (*top)->val;
-	stack_str* tmp = *top;
-	*top = (*top)->next;
-	free(tmp);
-	return val;
+void push_dbl(stack_dbl* st, double data) {
+    node_dbl* new_node = (node_dbl*)malloc(sizeof(node_dbl));
+    new_node->data = data;
+    new_node->next = st->top;
+    st->top = new_node;
 }
 
-int stack_n_empty(stack_numb* top) {
-	return top == NULL;
+void push_str(stack_str* st, char* data) {
+    node_str* new_node = (node_str*)malloc(sizeof(node_str));
+    new_node->data = (char*)malloc(sizeof(char) * strlen(data) + 1);   //+1 для нуля
+    strcpy(new_node->data, data);
+    new_node->next = st->top;
+    st->top = new_node;
 }
 
-int stack_s_empty(stack_str* top) {
-	return top == NULL;
+void enqueue(queue* q, token* tok) {
+    if (q->head == NULL) {
+        q->head = tok;
+        q->tail = tok;
+    }
+    else {
+        q->tail->next = tok;
+        q->tail = tok;
+    }
+}
+
+token* dequeue(queue* q) {
+    token* del_tok = q->head;
+    q->head = del_tok->next;
+    if (q->head == NULL) q->tail = NULL;
+    return del_tok;
+}
+
+double pop_dbl(stack_dbl* st) {
+    node_dbl* cur_top = st->top;
+    double returnable;
+    //if (cur_top == NULL) return -1;
+    st->top = cur_top->next;
+    returnable = cur_top->data;
+    free(cur_top);
+    return returnable;
+}
+
+char* pop_str(stack_str* st) {
+    node_str* cur_top = st->top;
+    char* returnable;
+    st->top = cur_top->next;
+    returnable = cur_top->data;
+    free(cur_top);
+    return returnable;
+}
+
+int stack_dbl_empty(stack_dbl* st) {
+    return (st->top == NULL) ? 1 : 0;
+}
+
+int stack_str_empty(stack_str* st) {
+    return (st->top == NULL) ? 1 : 0;
+}
+
+int queue_is_empty(queue* q) {
+    return (q->head == NULL) ? 1 : 0;
+}
+
+void tokenize(queue* q, char* str) {
+    int i = 0;
+    int start, str_ln;
+    while (str[i] != '\0') {
+        token* new_tok = (token*)malloc(sizeof(token));
+        new_tok->type = -1;
+        if (isdigit(str[i])) {
+            start = i;
+            while (isdigit(str[i])) i++;
+            new_tok->type = NUMB;
+        }
+        else if (isalpha(str[i])) {
+            start = i;
+            while (isalpha(str[i])) i++;
+        }
+        else {
+            start = i;
+            if (str[i] == '(') new_tok->type = LSKOB;
+            else if (str[i] == ')') new_tok->type = RSKOB;
+            else new_tok->type = OPERATOR;
+            i++;
+        }
+        str_ln = i - start;
+        char* new_str = (char*)malloc(sizeof(char) * (str_ln)+1);
+        for (int k = 0; k < str_ln; k++) new_str[k] = str[k + start];
+        new_str[str_ln] = '\0';
+        new_tok->data = new_str;
+        if (new_tok->type == -1) {
+            if (strcmp(new_str, "sin") == 0 || strcmp(new_str, "cos") == 0 || strcmp(new_str, "tg") == 0 || strcmp(new_str, "ctg") == 0 || strcmp(new_str, "arcsin") == 0 || strcmp(new_str, "arccos") == 0 || strcmp(new_str, "arctg") == 0 || strcmp(new_str, "arcctg") == 0 || strcmp(new_str, "sqrt") == 0)
+                new_tok->type = FUNC;
+            else new_tok->type = PEREM;
+        }
+        enqueue(q, new_tok);
+    }
+
 }
 
 void main() {
-	stack_numb *num_stack = NULL;
-	num_stack = push_n(num_stack, 10);
-	num_stack = push_n(num_stack, 15);
-	double res = pop_n(&num_stack);
-
+    queue q1;
+    tokenize(&q1, "123+sin(23)");
 }
+
+
