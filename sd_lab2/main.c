@@ -184,7 +184,7 @@ int priority(token* tok) {
 }
 
 void sort_station() {
-
+    
 }
 
 void main() {
@@ -192,18 +192,39 @@ void main() {
     printf("Input the math expression: ");
     scanf("%s", user_input);
 
-    token cur_tok;
     queue q_in, q_out;
     init_queue(&q_in); init_queue(&q_out);
 
     stack_dbl numbs; stack_str ops;
-    init_stack_dbl(&numbs); init_stack_dbl(&ops);
+    init_stack_dbl(&numbs); init_stack_str(&ops);
 
     tokenize(&q_in, user_input);
-    while (!queue_is_empty) {
+    while (!queue_is_empty(&q_in)) {
         token* cur_tok = dequeue(&q_in);
         if (cur_tok->type == NUMB || cur_tok->type == PEREM) enqueue(&q_out, cur_tok);
-        /*else if (cur_tok->type == OPERATOR) push_str(&ops, cur_tok->data);*/
+        else if (cur_tok->type == FUNC) {
+            push_str(&ops, cur_tok->data); free(cur_tok);
+        }
+        else if (cur_tok->type == OPERATOR) {
+            if (ops.top == NULL) {
+                push_str(&ops, cur_tok->data); free(cur_tok);
+            }
+            else {
+                while (!stack_str_empty(&ops) && priority(cur_tok->data) >= priority(ops.top->data)) {
+                    enqueue(&q_out, pop_str(&ops));
+                }
+                push_str(&ops, cur_tok->data); free(cur_tok);
+            }
+        }
+        else if (cur_tok->type == RSKOB) {
+        
+        }
+        else if (cur_tok->type == LSKOB) {
+        
+        }
+
+    
+    
     }
 }
 
