@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 enum token_type {
     NUMB, OPERATOR, FUNC, PEREM, LSKOB, RSKOB
@@ -151,6 +152,7 @@ void tokenize(queue* q, char* str) {
                 new_tok->type = FUNC;
             else new_tok->type = PEREM;
         }
+        new_tok->next = NULL;
         enqueue(q, new_tok);
     }
 
@@ -159,6 +161,7 @@ void tokenize(queue* q, char* str) {
 int priority(token* tok) {
     int pri;
     if (tok->type == FUNC)pri = 4;
+    else if (tok->type == LSKOB) pri = 5;
     else {
         switch (tok->data[0]) {
         case '+':
@@ -183,8 +186,97 @@ int priority(token* tok) {
     return pri;
 }
 
-void sort_station() {
-    
+int is_stepen(char* s) {
+    return (s[0] == '^');
+}
+
+int str_type(char* s) {
+    if (strcmp(s, "sin") == 0 || strcmp(s, "cos") == 0 || strcmp(s, "tg") == 0 || strcmp(s, "ctg") == 0 || strcmp(s, "arcsin") == 0 || strcmp(s, "arccos") == 0 || strcmp(s, "arctg") == 0 || strcmp(s, "arcctg") == 0 || strcmp(s, "sqrt") == 0) {
+        return FUNC;
+    }
+    return OPERATOR;
+}
+
+double get_perem(token* tok) {
+    double user_inpt;
+    printf("Enter the %s variable:", tok->data);
+    scanf("%lf", &user_inpt);
+    return user_inpt;
+}
+
+double calс_func(token* func, double dbl_arg) {
+    //double dbl_arg = atof(arg->data);
+    double res;
+    if (!strcmp("sin", func->data)) res = sin(dbl_arg);
+    else if (!strcmp("cos", func->data)) res = cos(dbl_arg);
+    else if (!strcmp("tg", func->data)) res = tan(dbl_arg);
+    else if (!strcmp("ctg", func->data)) { if (dbl_arg == 0) { printf("ERROR (divisor = 0)"); exit(0); }res = 1 / tan(dbl_arg); }
+    else if (!strcmp("arcsin", func->data)) res = asin(dbl_arg);
+    else if (!strcmp("arccos", func->data)) res = acos(dbl_arg);
+    else if (!strcmp("arctg", func->data)) res = atan(dbl_arg);
+    else if (!strcmp("arcctg", func->data)) { if (dbl_arg == 0) { printf("ERROR (divisor = 0)"); exit(0); }res = 1 / atan(dbl_arg); }
+    else if (!strcmp("sqrt", func->data)) {
+    if (dbl_arg < 0) {
+            printf("SQRT ERROR < 0"); exit(0);
+        }
+        res = sqrt(dbl_arg);
+    }
+    return res;
+}
+
+double calc_ops(token* func, double arg1, double arg2) {
+    double res;
+    switch (func->data[0]) {
+    case '+':
+        res = arg2 + arg1;
+        break;
+    case '-':
+        res = arg2 - arg1;
+        break;
+    case '*':
+        res = arg2 * arg1;
+        break;
+    case '/':
+        res = arg2 / arg1;
+        break;
+    case '^':
+        res = pow(arg2,arg1);
+        break;
+    }
+    return res;
+}
+
+void prepapre_and_calc(queue* q, stack_dbl* s) {
+    token* cur_tok;
+    double cur_numb;
+    while (!queue_is_empty(q)) {
+        cur_tok = dequeue(q);
+        if (cur_tok->type == NUMB) {
+            cur_numb = atof(cur_tok->data);
+        }
+        else if (cur_tok->type == PEREM) {
+            cur_numb = get_perem(cur_tok);
+        }
+        else if (cur_tok->type == FUNC) {
+            cur_numb = calс_func(cur_tok, pop_dbl(s));
+        }
+        else if (cur_tok->type == OPERATOR) {
+            if (cur_tok->data[0] == '!') {
+                cur_numb = tgamma(pop_dbl(s) + 1);  //fact
+            }
+            else {
+                double arg1 = pop_dbl(s);
+                double arg2 = pop_dbl(s);
+                cur_numb = calc_ops(cur_tok, arg1, arg2);
+            }
+        }
+        push_dbl(s, cur_numb);
+        free(cur_tok);
+    }
+}
+
+void print_result(stack_dbl* s) {
+    printf("Result: %lf", s->top->data);
 }
 
 void main() {
@@ -201,31 +293,58 @@ void main() {
     tokenize(&q_in, user_input);
     while (!queue_is_empty(&q_in)) {
         token* cur_tok = dequeue(&q_in);
-        if (cur_tok->type == NUMB || cur_tok->type == PEREM) enqueue(&q_out, cur_tok);
+        if (cur_tok->type == NUMB || cur_tok->type == PEREM) enqueue(&q_out, cur_tok);  //число и перем добавляем в вых очередь
         else if (cur_tok->type == FUNC) {
-            push_str(&ops, cur_tok->data); free(cur_tok);
+            push_str(&ops, cur_tok->data); free(cur_tok);       //функции пушим в стек
         }
         else if (cur_tok->type == OPERATOR) {
             if (ops.top == NULL) {
                 push_str(&ops, cur_tok->data); free(cur_tok);
             }
             else {
-                while (!stack_str_empty(&ops) && priority(cur_tok->data) >= priority(ops.top->data)) {
-                    enqueue(&q_out, pop_str(&ops));
+                while (!stack_str_empty(&ops)) {
+                    token* new_token = (token*)malloc(sizeof(token));
+                    new_token->type = str_type(ops.top->data);
+                    new_token->data = ops.top->data;
+                    new_token->next = NULL;
+                    
+                    if ((is_stepen(cur_tok->data) && priority(cur_tok) < priority(new_token)) || (!is_stepen(cur_tok->data) && priority(cur_tok) <= priority(new_token))) {
+                        new_token->data = pop_str(&ops);
+                        enqueue(&q_out, new_token);
+                    }
+                    else{
+                        free(new_token);
+                        break;
+                    }
                 }
                 push_str(&ops, cur_tok->data); free(cur_tok);
             }
         }
-        else if (cur_tok->type == RSKOB) {
-        
-        }
         else if (cur_tok->type == LSKOB) {
-        
+            push_str(&ops, cur_tok->data); free(cur_tok);
         }
-
-    
-    
+        else if (cur_tok->type == RSKOB) {
+            while (ops.top->data[0] != '(') {
+                token* new_token = (token*)malloc(sizeof(token));
+                new_token->data = pop_str(&ops);
+                new_token->type = str_type(new_token->data);
+                new_token->next = NULL;
+                enqueue(&q_out, new_token);
+            }
+            pop_str(&ops);
+            free(cur_tok);
+        }
     }
+    while (!stack_str_empty(&ops)) {
+        token* new_token = (token*)malloc(sizeof(token));
+        new_token->data = pop_str(&ops);
+        new_token->type = str_type(new_token->data);
+        new_token->next = NULL;
+        enqueue(&q_out, new_token);
+        //enqueue(&q_out, pop_str(&ops));
+    }
+    prepapre_and_calc(&q_out, &numbs);
+    print_result(&numbs);
 }
 
 
