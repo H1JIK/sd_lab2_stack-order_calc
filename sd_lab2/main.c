@@ -4,6 +4,17 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#define MAX_BUF_SIZE 512 
+#define MAX_V_TABLE 128
+
+
+typedef struct {
+    char* name;
+    double val;
+}pre_table;
+
+pre_table p_t[MAX_V_TABLE];
+int table_cnt = 0;
 
 enum token_type {
     NUMB, OPERATOR, FUNC, PEREM, LSKOB, RSKOB
@@ -199,8 +210,17 @@ int str_type(char* s) {
 
 double get_perem(token* tok) {
     double user_inpt;
+    for (int i = 0; i < table_cnt; i++) {
+        if (strcmp(tok->data, p_t[i].name) == 0) {
+            return p_t[i].val;
+        }
+    }
     printf("Enter the %s variable:", tok->data);
     scanf("%lf", &user_inpt);
+    p_t[table_cnt].name = malloc(sizeof(char) * strlen(tok->data) + 1);
+    strcpy(p_t[table_cnt].name, tok->data);
+    p_t[table_cnt].val = user_inpt;
+    table_cnt++;
     return user_inpt;
 }
 
@@ -271,6 +291,7 @@ void prepapre_and_calc(queue* q, stack_dbl* s) {
             }
         }
         push_dbl(s, cur_numb);
+        free(cur_tok->data);
         free(cur_tok);
     }
 }
@@ -280,7 +301,7 @@ void print_result(stack_dbl* s) {
 }
 
 void main() {
-    char user_input[512];
+    char user_input[MAX_BUF_SIZE];
     printf("Input the math expression: ");
     scanf("%s", user_input);
 
@@ -345,6 +366,11 @@ void main() {
     }
     prepapre_and_calc(&q_out, &numbs);
     print_result(&numbs);
+
+    //очистка таблицы переменных
+    for (int i = 0; i < table_cnt; i++) {
+        free(p_t[i].name);
+    }
 }
 
 
